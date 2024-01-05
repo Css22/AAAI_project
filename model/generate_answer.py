@@ -108,7 +108,7 @@ transform = transforms.Compose([
 ])
 transform = None
 path = '/data/zbw/course/AAAI/project/work'
-batch_size = 256
+batch_size = 32
 train_data = MinistDataLoader(root_dir= path  + '/processed_data/train/', transform=transform)
 train_data_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=2)
 
