@@ -177,6 +177,54 @@ test_data = TestDataLoader(root_dir= path  +'/processed_data/test/', transform=t
 test_data_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False, num_workers=2)
 
 
+# for epoch in range(NUM_EPOCHS):
+#     model.train()
+#     for batch_idx, (features, targets) in enumerate(train_data_loader):
+    
+#         ### PREPARE MINIBATCH
+#         features = features.to(DEVICE)
+#         targets = targets.to(DEVICE)
+            
+#         ### FORWARD AND BACK PROP
+#         logits, probas = model(features)
+#         cost = F.cross_entropy(logits, targets)
+#         optimizer.zero_grad()
+        
+#         cost.backward()
+        
+#         ### UPDATE MODEL PARAMETERS
+#         optimizer.step()
+        
+#         ### LOGGING
+#         if not batch_idx % 200:
+#             print (f'Epoch: {epoch+1:03d}/{NUM_EPOCHS:03d} | '
+#                    f'Batch {batch_idx:04d}/{len(train_data_loader):04d} |' )
+            
+
+
+# model.eval()
+# correct = 0
+# total = 0
+# with torch.no_grad(): 
+#     for i, data in enumerate(val_data_loader, 0):
+#         images, labels = data[0].to(DEVICE), data[1].to(DEVICE)
+#         logits, probas = model(images)
+#         _, predicted = torch.max(logits, 1)
+#         total += labels.size(0)
+#         correct += (predicted == labels).sum().item()
+
+
+# val_accuracy = 100 * correct / total
+
+# print(val_accuracy)
+
+import time
+from helper import compute_accuracy_and_loss
+
+start_time = time.time()
+train_acc_lst, valid_acc_lst = [], []
+train_loss_lst, valid_loss_lst = [], []
+
 for epoch in range(NUM_EPOCHS):
     model.train()
     for batch_idx, (features, targets) in enumerate(train_data_loader):
@@ -198,22 +246,50 @@ for epoch in range(NUM_EPOCHS):
         ### LOGGING
         if not batch_idx % 200:
             print (f'Epoch: {epoch+1:03d}/{NUM_EPOCHS:03d} | '
-                   f'Batch {batch_idx:04d}/{len(train_data_loader):04d} |' )
-            
+                   f'Batch {batch_idx:04d}/{len(train_data_loader):04d} |' 
+                   f' Cost: {cost:.4f}')
+
+    # no need to build the computation graph for backprop when computing accuracy
+    model.eval()
+    with torch.set_grad_enabled(False):
+        train_acc, train_loss = compute_accuracy_and_loss(model, train_data_loader, device=DEVICE)
+        valid_acc, valid_loss = compute_accuracy_and_loss(model, val_data_loader, device=DEVICE)
+        train_acc_lst.append(train_acc)
+        valid_acc_lst.append(valid_acc)
+        train_loss_lst.append(train_loss)
+        valid_loss_lst.append(valid_loss)
+        print(f'Epoch: {epoch+1:03d}/{NUM_EPOCHS:03d} Train Acc.: {train_acc:.2f}%'
+              f' | Validation Acc.: {valid_acc:.2f}%')
+        
+    elapsed = (time.time() - start_time)/60
+    print(f'Time elapsed: {elapsed:.2f} min')
+  
+elapsed = (time.time() - start_time)/60
+print(f'Total Training Time: {elapsed:.2f} min')
 
 
-model.eval()
-correct = 0
-total = 0
-with torch.no_grad(): 
-    for i, data in enumerate(val_data_loader, 0):
-        images, labels = data[0].to(DEVICE), data[1].to(DEVICE)
-        logits, probas = model(images)
-        _, predicted = torch.max(logits, 1)
-        total += labels.size(0)
-        correct += (predicted == labels).sum().item()
+train_acc_lst = [i.cpu() for i in train_acc_lst]
+train_acc_lst = [i.numpy() for i in train_acc_lst]
+valid_acc_lst = [i.cpu() for i in valid_acc_lst]
+valid_acc_lst = [i.numpy() for i in valid_acc_lst] 
 
+import matplotlib.pyplot as plt
 
-val_accuracy = 100 * correct / total
+xx = range(NUM_EPOCHS)
+plt.plot(xx, train_loss_lst, marker='.', label='train_loss')
+plt.plot(xx, valid_loss_lst, marker='.', label='valid_loss')
+plt.title('loss record')
+plt.xlabel('epoch')
+plt.ylabel('loss')
+plt.legend()
+plt.grid()
+plt.show()
 
-print(val_accuracy)
+plt.plot(xx, train_acc_lst, marker='.', label='train_acc')
+plt.plot(xx, valid_acc_lst, marker='.', label='valid_acc')
+plt.title('acc record')
+plt.xlabel('epoch')
+plt.ylabel('acc')
+plt.legend()
+plt.grid()
+plt.show()
